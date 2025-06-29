@@ -111,6 +111,13 @@ int main(void){
 		bool shouldDraw = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) isClicked = true;
 
+		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_EQUAL)) {
+			brushSize++;
+		}
+		if (IsKeyDown(KEY_LEFT_SHIFT) && IsKeyDown(KEY_MINUS)) {
+			brushSize--;
+		}
+
 		for (int i = 0; i < BUTTON_COUNT; i++) {
 			DrawRectangleRoundedLines(buttons[i], 2.0, 1, brushColor);
 			DrawText(buttonNames[i], BTN_LOC_X(buttons[i]), BTN_LOC_Y(buttons[i]), 10, GRAY);
@@ -129,7 +136,7 @@ int main(void){
 		DrawText(sizeTextForBrush, fontX-10, fontY-10, fontSize, RAYWHITE);
 
 		if (CheckCollisionPointRec(mouse, buttons[clear]) && shouldDraw && isClicked) isClear = 1;
-		if (CheckCollisionPointRec(mouse, buttons[plus]) && shouldDraw && isClicked && (brushSize < 15)) brushSize++;
+		if (CheckCollisionPointRec(mouse, buttons[plus]) && shouldDraw && isClicked) brushSize++;
 		if (CheckCollisionPointRec(mouse, buttons[minus]) && shouldDraw && isClicked && (brushSize > 1)) brushSize--;
 		if (CheckCollisionPointRec(mouse, buttons[eraser]) && shouldDraw && isClicked) brushColor = bgColor;
 
@@ -142,17 +149,15 @@ int main(void){
 				bullshitReasonToClear--;
 			}
 
-			// WHAT THE FUCK IS THIS BULLSHIT!!
 			// I dunno why but when I use other DrawLine... functions, it behaves weirdly?
-			// This is so fucking stupid but it is late I'll probably look it sometime, 
+			// This seems so fucking stupid but it is late I'll probably look it sometime, 
 			// probably... I hope....
 			if (shouldDraw) {
 				Vector2 points[2] = {mouse, prevMouse};
-				int lim = 1 << brushSize;
-				for (int i = 1; i<lim; i++){
+				for (int i = 1; i<5*brushSize; i++){
 					DrawLineStrip(points, 2, brushColor);
-					points[0].x += 1.0/i;
-					points[1].x += 1.0/i;
+					points[0].x += i/(1000.0);
+					points[1].x += i/(1000.0);
 				}
 			}
 
