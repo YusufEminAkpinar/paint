@@ -2,7 +2,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
+#include <math.h>
 
 /*
   * TODO:
@@ -12,153 +13,160 @@
   * Implement undo-redo.
 */
 
+#define BTN_LOC_X(btn) ( btn.x + btn.width * 0.4 )
+#define BTN_LOC_Y(btn) ( btn.y* 0.4 + btn.height )
+#define BUTTON_COUNT 6
+#define HIST_SIZE 1000
+
 Color brushColor = RAYWHITE;
 Color bgColor = BLACK;
 unsigned char brushSize = 5;
 bool isClicked = false;
 
+typedef struct {
+	Vector2 pos;
+	Color color;
+	float size;
+} brushCommand;
+
 
 void colorPicker(int rows, int columns, int size, int spacing, Vector2 pos){
-  Vector2 mouse = GetMousePosition();
-  Color brushColors[] = {RAYWHITE, YELLOW, ORANGE, PINK, RED, GREEN, BLUE, PURPLE, BROWN, WHITE, BLACK};
-  Rectangle colorRects[rows*columns];
-  int counter = 0, i = 0;
-  for (int r=0; r<rows; r++){
-    for (int c=0; c<columns; c++){
-      int posX = pos.x + c * (size + spacing);
-      int posY = pos.y + r * (size + spacing);
-      colorRects[i] = (Rectangle){posX, posY, size, size};
-      DrawRectangleRec(colorRects[i], brushColors[i]);
-      if(CheckCollisionPointRec(mouse, colorRects[i]) && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && isClicked) brushColor = brushColors[i];
-      i++;
-    }
-    counter++;
-  }
+	Vector2 mouse = GetMousePosition();
+	Color brushColors[] = {RAYWHITE, YELLOW, ORANGE, PINK, RED, GREEN, BLUE, PURPLE, BROWN, WHITE, BLACK};
+	Rectangle colorRects[rows*columns];
+	int counter = 0, i = 0;
+	for (int r=0; r<rows; r++){
+		for (int c=0; c<columns; c++){
+			int posX = pos.x + c * (size + spacing);
+			int posY = pos.y + r * (size + spacing);
+			colorRects[i] = (Rectangle){posX, posY, size, size};
+			DrawRectangleRec(colorRects[i], brushColors[i]);
+			if(CheckCollisionPointRec(mouse, colorRects[i]) && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && isClicked)
+				brushColor = brushColors[i];
+			i++;
+		}
+		counter++;
+	}
 }
 
 
 int main(void){
-	const int height = 1920,
-            width = 1080;
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  int isClear = 1;
-	InitWindow(width, height, "Raylib Testing");
+	int bullshitReasonToClear = 2;
+	const int screenHeight = 600, screenWidth = 800;
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+	int isClear = 1;
+	InitWindow(screenWidth, screenHeight, "Raylib Testing");
 	SetTargetFPS(60);
-  Vector2 prevMouse = GetMousePosition();
-  Rectangle clearButton = {
-    .x = 50,
-    .y = 50,
-    .width = 100,
-    .height = 50
-  };
-  Rectangle circleButton = {
-    .x = clearButton.x + clearButton.width + 20,
-    .y = clearButton.y,
-    .width = clearButton.width,
-    .height = clearButton.height
-  };
-  Rectangle eraserButton = {
-    .x = circleButton.x + circleButton.width + 20,
-    .y = circleButton.y,
-    .width = circleButton.width,
-    .height = circleButton.height
-  };
-  Rectangle undoButton = {
-    .x = eraserButton.x + eraserButton.width + 20,
-    .y = eraserButton.y,
-    .width = eraserButton.width,
-    .height = eraserButton.height
-  };
+	Vector2 prevMouse = GetMousePosition();
 
-  Rectangle sizePlusButton = {
-    .x = undoButton.x + undoButton.width + 20,
-    .y = undoButton.y,
-    .width = undoButton.width,
-    .height = undoButton.height
-  };
+	brushCommand history[HIST_SIZE];
+	int hist_count = 0;
 
-  Rectangle sizeMinusButton = {
-    .x = sizePlusButton.x + sizePlusButton.width + 20,
-    .y = sizePlusButton.y,
-    .width = sizePlusButton.width,
-    .height = sizePlusButton.height
-  };
+	Rectangle buttons[BUTTON_COUNT];
+	char* buttonNames[BUTTON_COUNT] = {0};
+	enum buttonIndex {
+		clear,
+		circle,
+		eraser,
+		undo,
+		plus,
+		minus,
+	};
 
-  Rectangle lastButton = sizeMinusButton;
+	buttonNames[0] = strdup("Clear");
+	buttonNames[1] = strdup("Circle");
+	buttonNames[2] = strdup("Eraser");
+	buttonNames[3] = strdup("Undo");
+	buttonNames[4] = strdup("+");
+	buttonNames[5] = strdup("-");
 
-  
-  Image screenShot = { 0 };
-  Texture2D history[4096] = { 0 };
-  unsigned char historyCounter = 0;
-  char *filename = malloc(256);
-
-	while (!WindowShouldClose())
-	{
-    Vector2 mouse = GetMousePosition();
-    bool shouldDraw = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) isClicked = true;
-    
-    // Drawing buttons
-    DrawRectangleRoundedLines(clearButton , 2.0, 1, brushColor);
-    DrawText("Clear", clearButton.x + clearButton.width *0.4, clearButton.y + 0.4 * clearButton.height, 10, GRAY);
-
-    DrawRectangleRoundedLines(circleButton, 2.0, 1, brushColor);
-    DrawText("Circle", circleButton.x + circleButton.width *0.4, circleButton.y + 0.4 * circleButton.height, 10, GRAY);
-
-    DrawRectangleRoundedLines(eraserButton, 2.0, 1, brushColor);
-    DrawText("Eraser", -5+eraserButton.x + eraserButton.width *0.4, eraserButton.y + 0.4 * eraserButton.height, 10, GRAY);
-
-    DrawRectangleRoundedLines(undoButton, 2.0, 1, brushColor);
-    DrawText("Undo", -5+undoButton.x + undoButton.width *0.4, undoButton.y + 0.4 * undoButton.height, 10, GRAY);
-
-    DrawRectangleRoundedLines(sizePlusButton, 2.0, 1, brushColor);
-    DrawText("+", -5+sizePlusButton.x + sizePlusButton.width *0.4, sizePlusButton.y + 0.4 * sizePlusButton.height, 10, GRAY);
-
-    DrawRectangleRoundedLines(sizeMinusButton, 2.0, 1, brushColor);
-    DrawText("-", -5+sizeMinusButton.x + sizeMinusButton.width *0.4, sizeMinusButton.y + 0.4 * sizeMinusButton.height, 10, GRAY);
-
-    colorPicker(2, 4, 20, 10, (Vector2){lastButton.x + lastButton.width + 20, lastButton.y});
-    // Buttons end
-
-    //if (CheckCollisionPointRec(mouse, undoButton) && shouldDraw) {
-    //  printf("Try to undo it.\n");
-    //  DrawTexture(history[--historyCounter], 0, 0, WHITE);
-    //}
+	float btnWidth = 100,
+		  btnHeight = 50,
+		  spacingX = 20,
+		  spacingY = 20;
+	float x = 50,
+		  y = 50;
 
 
-    if (CheckCollisionPointRec(mouse, clearButton) && shouldDraw && isClicked) isClear = 1;
-    if (CheckCollisionPointRec(mouse, sizePlusButton) && shouldDraw && isClicked) brushSize += 1;
-    if (CheckCollisionPointRec(mouse, sizeMinusButton) && shouldDraw && isClicked && (brushSize > 1)) brushSize -= 1;
-    if (CheckCollisionPointRec(mouse, eraserButton) && shouldDraw && isClicked){
-      brushColor = bgColor;
-    }
+
+	while (!WindowShouldClose()) {
+		int currentWidth = GetScreenWidth();
+		int currentHeight = GetScreenHeight();
+		// printf("Size of window: %d x %d\n", currentWidth, currentHeight);
+
+		x = 50;
+		for (int i = 0; i < BUTTON_COUNT; i++) {
+			if (x + btnWidth > screenWidth) {
+				x = 50;
+				y += btnHeight + spacingY;
+			}
+
+			buttons[i] = (Rectangle) {x, y, btnWidth, btnHeight};
+
+			x += btnWidth + spacingX;
+		}
+		Rectangle lastButton = buttons[BUTTON_COUNT-1];
+
+		Vector2 mouse = GetMousePosition();
+		bool shouldDraw = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) isClicked = true;
+
+		for (int i = 0; i < BUTTON_COUNT; i++) {
+			DrawRectangleRoundedLines(buttons[i], 2.0, 1, brushColor);
+			DrawText(buttonNames[i], BTN_LOC_X(buttons[i]), BTN_LOC_Y(buttons[i]), 10, GRAY);
+		}
+
+		colorPicker(2, 4, 20, 10, (Vector2) {lastButton.x + lastButton.width + spacingX, lastButton.y});
+		// Buttons end
+		
+		int fontX = currentWidth-50,
+			fontY = currentHeight-50,
+			fontSize = 20;
+		DrawCircleLines(fontX, fontY, fontSize+5, brushColor);
+		char *sizeTextForBrush = malloc(10);
+		sprintf(sizeTextForBrush, "%d", brushSize);
+		DrawRectangle(fontX-12, fontY-10, fontSize+5, fontSize, bgColor);
+		DrawText(sizeTextForBrush, fontX-10, fontY-10, fontSize, RAYWHITE);
+
+		if (CheckCollisionPointRec(mouse, buttons[clear]) && shouldDraw && isClicked) isClear = 1;
+		if (CheckCollisionPointRec(mouse, buttons[plus]) && shouldDraw && isClicked && (brushSize < 15)) brushSize++;
+		if (CheckCollisionPointRec(mouse, buttons[minus]) && shouldDraw && isClicked && (brushSize > 1)) brushSize--;
+		if (CheckCollisionPointRec(mouse, buttons[eraser]) && shouldDraw && isClicked) brushColor = bgColor;
 
 		BeginDrawing();
 
-    if (IsWindowResized()) isClear = 1;
+			if (IsWindowResized()) isClear = 1;
 
-    if (shouldDraw) {
-      if (brushSize == 1) DrawLineV(mouse, prevMouse, brushColor);
-      else DrawLineEx(mouse, prevMouse, brushSize, brushColor);
-    }
+			if (bullshitReasonToClear) {
+				ClearBackground(bgColor);
+				bullshitReasonToClear--;
+			}
 
-    if (isClear){
-      ClearBackground(bgColor);
-      brushColor = RAYWHITE;
-      isClear = 0;
-    }
+			// WHAT THE FUCK IS THIS BULLSHIT!!
+			// I dunno why but when I use other DrawLine... functions, it behaves weirdly?
+			// This is so fucking stupid but it is late I'll probably look it sometime, 
+			// probably... I hope....
+			if (shouldDraw) {
+				Vector2 points[2] = {mouse, prevMouse};
+				int lim = 1 << brushSize;
+				for (int i = 1; i<lim; i++){
+					DrawLineStrip(points, 2, brushColor);
+					points[0].x += 1.0/i;
+					points[1].x += 1.0/i;
+				}
+			}
 
-    EndDrawing();
-    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !CheckCollisionPointRec(mouse, undoButton)) {
-      //screenShot = LoadImageFromScreen();
-      //history[historyCounter++] = LoadTextureFromImage(screenShot);
-      //UnloadImage(screenShot);
-    }
+			if (isClear){
+			  ClearBackground(bgColor);
+			  brushColor = RAYWHITE;
+			  isClear = 0;
+			}
 
-    prevMouse = mouse;
-    isClicked = !shouldDraw;
-
+		EndDrawing();
+		prevMouse = mouse;
+		isClicked = !shouldDraw;
 	}
+	
 	CloseWindow();
-  return 0;
+	return 0;
 }
